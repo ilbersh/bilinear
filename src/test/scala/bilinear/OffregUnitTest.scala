@@ -17,7 +17,7 @@ class OffregUnitTester(c: Offreg) extends PeekPokeTester(c) {
     var yoffsum = 0
     for(i <- 1 to 16) {
         xoffsum += xst + dx*i
-        yoffsum += yst + yx*i
+        yoffsum += yst + dy*i
     }
     
   }
