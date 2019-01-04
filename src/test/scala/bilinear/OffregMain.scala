@@ -1,6 +1,6 @@
 // See README.md for license details.
 
-package gcd
+package bilinear
 
 import chisel3._
 
@@ -8,24 +8,24 @@ import chisel3._
   * This provides an alternate way to run tests, by executing then as a main
   * From sbt (Note: the test: prefix is because this main is under the test package hierarchy):
   * {{{
-  * test:runMain gcd.GCDMain
+  * test:runMain bilinear.OffregMain
   * }}}
   * To see all command line options use:
   * {{{
-  * test:runMain gcd.GCDMain --help
+  * test:runMain bilinear.OffregMain --help
   * }}}
   * To run with verilator:
   * {{{
-  * test:runMain gcd.GCDMain --backend-name verilator
+  * test:runMain bilinear.OffregMain --backend-name verilator
   * }}}
   * To run with verilator from your terminal shell use:
   * {{{
-  * sbt 'test:runMain gcd.GCDMain --backend-name verilator'
+  * sbt 'test:runMain bilinear.OffregMain --backend-name verilator'
   * }}}
   */
-object GCDMain extends App {
-  iotesters.Driver.execute(args, () => new GCD) {
-    c => new GCDUnitTester(c)
+object OffregMain extends App {
+  iotesters.Driver.execute(args, () => new Offreg) {
+    c => new OffregUnitTester(c)
   }
 }
 
@@ -37,13 +37,13 @@ object GCDMain extends App {
   *
   * To run from sbt
   * {{{
-  * test:runMain gcd.GCDRepl
+  * test:runMain bilinear.OffregRepl
   * }}}
   * To run from sbt and see the half a zillion options try
   * {{{
-  * test:runMain gcd.GCDRepl --help
+  * test:runMain bilinear.OffregRepl --help
   * }}}
   */
-object GCDRepl extends App {
-  iotesters.Driver.executeFirrtlRepl(args, () => new GCD)
+object OffregRepl extends App {
+  iotesters.Driver.executeFirrtlRepl(args, () => new Offreg)
 }
