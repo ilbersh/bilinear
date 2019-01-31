@@ -7,38 +7,80 @@ import java.io.File
 import chisel3.iotesters
 import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 
-class OffregUnitTester(c: Offreg) extends PeekPokeTester(c) {
-  def computePixelOffregSum(xstart: Int, ystart: Int, xdel: Int, ydel: Int): (Int, Int) = {
-    val xst = xstart.asFixedPoint(20.BP)
-    val yst = ystart.asFixedPoint(20.BP)
-    val dx = xdel.asFixedPoint(30.BP)
-    val dy = ydel.asFixedPoint(30.BP)
-    var xoffsum = 0
-    var yoffsum = 0
-    for(i <- 1 to 16) {
-        xoffsum += xst + dx*i
-        yoffsum += yst + yx*i
+
+class OffregUnitTester(c: PixelOffregFold) extends PeekPokeTester(c) {
+  def mulFixed(l: Int, r: Int): Int = {
+    ((l >> 4) * r) >> 6
+  }
+  def computePixelOffregFold(xstart: Int, ystart: Int, xdel: Int, ydel: Int): (Int, Int, Int) = {
+    val xst = xstart
+    val yst = ystart
+    val dx = xdel
+    val dy = ydel
+    var xoff: Long = 0
+    var yoff: Long = 0
+    var vld = 0
+    for(i <- 0 until 16) {
+        val px = xst + mulFixed(dx,i)
+        val py = yst + mulFixed(dy,i)
+        xoff ^= px
+        yoff ^= py
+        if (px < (16 << 20)+xst && py < (6 << 20)+yst)
+            vld |= 1 << i
     }
-    
+    (xoff, yoff, vld)
   }
 
   private val bilinear = c
+  ////
+  val maxsize = 2048 << 20 - 1 // 2048
+  val max_del = 2136746230 // 1.99
+  for(i <- 1 until 500) {
+    val start_x = rnd.nextInt(maxsize)
+    val start_y = rnd.nextInt(maxsize)
+    val del_x = rnd.nextInt(max_del)*2 - 2136746230
+    val del_y = rnd.nextInt(max_del)*2 - 2136746230
+    printf("start_x = %6.5f\n", start_x.toFloat/Math.pow(2,20))
+    printf("start_y = %6.5f\n", start_y.toFloat/Math.pow(2,20))
+    printf("del_x = %6.5f\n", del_x.toFloat/Math.pow(2,30))
+    printf("del_y = %6.5f\n", del_y.toFloat/Math.pow(2,30))
+    poke(bilinear.io.start_x, start_x)
+    poke(bilinear.io.start_y, start_y)
+    poke(bilinear.io.del_x, del_x)
+    poke(bilinear.io.del_y, del_y)
+    
+    step(1)
 
-  for(i <- 1 to 40 by 3) {
-    for (j <- 1 to 40 by 7) {
-      poke(bilinear.io.value1, i)
-      poke(bilinear.io.value2, j)
-      poke(bilinear.io.loadingValues, 1)
-      step(1)
-      poke(bilinear.io.loadingValues, 0)
-
-      val (expected_bilinear, steps) = computeGcd(i, j)
-
-      step(steps - 1) // -1 is because we step(1) already to toggle the enable
-      expect(bilinear.io.outputOffreg, expected_bilinear)
-      expect(bilinear.io.outputValid, 1)
-    }
+    val (xoff, yoff, vld) = computePixelOffregFold(start_x, start_y, del_x, del_y)
+    
+    printf("xoff = %6.5f\n", xoff.toFloat/Math.pow(2,20))
+    printf("yoff = %6.5f\n", yoff.toFloat/Math.pow(2,20))
+    printf("vld = %s\n", vld.toBinaryString)
+    
+    expect(bilinear.io.of_x_fold, xoff)
+    expect(bilinear.io.of_y_fold, yoff)
+    expect(bilinear.io.vld_fold, vld)
   }
+}
+
+class OffregToMemTester(c: OffregToMem) extends PeekPokeTester(c) {
+	
+  private val bilinear = c
+  ////
+  val maxsize = 2048 << 20 - 1 // 2048
+  val max_del = 2136746230 // 1.99
+    val start_x = rnd.nextInt(maxsize)
+    val start_y = rnd.nextInt(maxsize)
+    val del_x = rnd.nextInt(max_del)*2 - 2136746230
+    val del_y = rnd.nextInt(max_del)*2 - 2136746230
+    poke(bilinear.io.start_x, start_x)
+    poke(bilinear.io.start_y, start_y)
+    poke(bilinear.io.del_x, del_x)
+    poke(bilinear.io.del_y, del_y)
+    poke(bilinear.io.wen,    1)
+    poke(bilinear.io.waddr, 0)//
+	
+    step(1)
 }
 
 /**

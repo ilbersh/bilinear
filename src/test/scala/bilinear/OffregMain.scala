@@ -24,8 +24,14 @@ import chisel3._
   * }}}
   */
 object OffregMain extends App {
-  iotesters.Driver.execute(args, () => new Offreg) {
+  iotesters.Driver.execute(args, () => new PixelOffregFold) {
     c => new OffregUnitTester(c)
+  }
+}
+
+object OffregToMemMain extends App {
+  iotesters.Driver.execute(args, () => new OffregToMem) {
+    c => new OffregToMemTester(c)
   }
 }
 
@@ -45,5 +51,5 @@ object OffregMain extends App {
   * }}}
   */
 object OffregRepl extends App {
-  iotesters.Driver.executeFirrtlRepl(args, () => new Offreg)
+  iotesters.Driver.executeFirrtlRepl(args, () => new PixelOffregFold)
 }
