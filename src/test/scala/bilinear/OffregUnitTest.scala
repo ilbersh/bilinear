@@ -9,26 +9,39 @@ import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 
 
 class OffregUnitTester(c: PixelOffregFold) extends PeekPokeTester(c) {
+  def fixedToFloat(v: Int, frac: Int): Float = {
+    v.toFloat/Math.pow(2,frac).toFloat
+  }
+  def floatToFixed(v: Float, frac: Int): Int = {
+    (v*Math.pow(2,frac)).toInt
+  }
   def mulFixed(l: Int, r: Int): Int = {
     ((l >> 4) * r) >> 6
   }
-  def computePixelOffregFold(xstart: Int, ystart: Int, xdel: Int, ydel: Int): (Int, Int, Int) = {
-    val xst = xstart
-    val yst = ystart
-    val dx = xdel
-    val dy = ydel
+  def computePixelOffregFold(xstart: Int, ystart: Int, xdel: Int, ydel: Int): (Int, Int) = {
     var xoff: Long = 0
     var yoff: Long = 0
-    var vld = 0
     for(i <- 0 until 16) {
-        val px = xst + mulFixed(dx,i)
-        val py = yst + mulFixed(dy,i)
+        val px = xstart + mulFixed(xdel,i)
+        val py = ystart + mulFixed(ydel,i)
         xoff ^= px
         yoff ^= py
-        if (px < (16 << 20)+xst && py < (6 << 20)+yst)
+    }
+    (xoff, yoff)
+  }
+  def computePixelVLD(xstart: Float, ystart: Float, xdel: Float, ydel: Float): Int = {
+    var xoff = 0
+    var yoff = 0
+    var vld = 0
+    for(i <- 0 until 16) {
+        val px = xstart + xdel*i
+        val py = ystart + ydel*i
+        //printf("px(%d) = %6.5f\n", i, px)
+        //printf("py(%d) = %6.5f\n", i, py)
+        if (px < 16.0 && py < 6.0)
             vld |= 1 << i
     }
-    (xoff, yoff, vld)
+    vld
   }
 
   private val bilinear = c
@@ -40,10 +53,14 @@ class OffregUnitTester(c: PixelOffregFold) extends PeekPokeTester(c) {
     val start_y = rnd.nextInt(maxsize)
     val del_x = rnd.nextInt(max_del)*2 - 2136746230
     val del_y = rnd.nextInt(max_del)*2 - 2136746230
-    printf("start_x = %6.5f\n", start_x.toFloat/Math.pow(2,20))
-    printf("start_y = %6.5f\n", start_y.toFloat/Math.pow(2,20))
-    printf("del_x = %6.5f\n", del_x.toFloat/Math.pow(2,30))
-    printf("del_y = %6.5f\n", del_y.toFloat/Math.pow(2,30))
+    val start_x_flt = fixedToFloat(start_x, 20)
+    val start_y_flt = fixedToFloat(start_y, 20)
+    val del_x_flt = fixedToFloat(del_x, 30)
+    val del_y_flt = fixedToFloat(del_y, 30)
+    printf("start_x = %6.5f\n", start_x_flt)
+    printf("start_y = %6.5f\n", start_y_flt)
+    printf("del_x = %6.5f\n", del_x_flt)
+    printf("del_y = %6.5f\n", del_y_flt)
     poke(bilinear.io.start_x, start_x)
     poke(bilinear.io.start_y, start_y)
     poke(bilinear.io.del_x, del_x)
@@ -51,10 +68,11 @@ class OffregUnitTester(c: PixelOffregFold) extends PeekPokeTester(c) {
     
     step(1)
 
-    val (xoff, yoff, vld) = computePixelOffregFold(start_x, start_y, del_x, del_y)
+    val (xoff, yoff) = computePixelOffregFold(start_x, start_y, del_x, del_y)
+    val vld = computePixelVLD(start_x_flt, start_y_flt, del_x_flt, del_y_flt)
     
-    printf("xoff = %6.5f\n", xoff.toFloat/Math.pow(2,20))
-    printf("yoff = %6.5f\n", yoff.toFloat/Math.pow(2,20))
+    //printf("xoff = %d\n", xoff)
+    //printf("yoff = %d\n", yoff)
     printf("vld = %s\n", vld.toBinaryString)
     
     expect(bilinear.io.of_x_fold, xoff)

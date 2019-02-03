@@ -27,7 +27,7 @@ class PixelOffreg extends Module {
     io.offset_x := offset.map(i => i.x.asSInt())
     io.offset_y := offset.map(i => i.y.asSInt())
     
-    val mx = start + (new Pixel(16.F(20.BP), 6.F(20.BP)))
+    val mx = new Pixel(16.F(20.BP), 6.F(20.BP))
     val vld = offset.map(i => i.inTile(mx))
     io.vld := vld.indices.map(i => vld(i).asUInt() << i).foldLeft(0.U)(_ | _)
 }
